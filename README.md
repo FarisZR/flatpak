@@ -12,11 +12,11 @@ GSeek downloads its model and official inference runtimes separately. They are n
 
 ## Publication
 
-GSeek’s release workflow builds and tests both architectures. This repository checks for new published releases every 15 minutes, validates the bundles, signs OSTree commits and metadata, and pushes the static repository to the `pages` branch. Cloudflare Pages serves that branch, with no build command, at `flatpak.fariszr.com`. `flathub.fariszr.com` is an alias.
+GSeek’s release workflow builds and tests both architectures. This repository checks for new published releases every 15 minutes, validates the bundles, signs OSTree commits and metadata, and uploads the static repository directly to Cloudflare Pages at `flatpak.fariszr.com`. The successfully published state is retained on the `pages` branch. `flathub.fariszr.com` is an alias.
 
 The pipeline retains three generations of repository objects, creates no static deltas, and rejects deployments above **25 MiB per file** or **20,000 files**. A missing object returns HTTP 404, and mutable OSTree metadata is never cached as an immutable asset. Pages deployment is atomic.
 
-The public signing key is `fariszr.gpg`. Configure its matching ASCII-armored private key as the **`FLATPAK_GPG_PRIVATE_KEY`** Actions secret. Publication fails if the key does not match. Keep a secure backup: replacing the signing key requires deliberate trust rotation for installed clients. No Cloudflare API token is needed with Pages’ GitHub integration.
+The public signing key is `fariszr.gpg`. Configure its matching ASCII-armored private key as the **`FLATPAK_GPG_PRIVATE_KEY`** Actions secret. Publication fails if the key does not match. Keep a secure backup: replacing the signing key requires deliberate trust rotation for installed clients. Also configure a `CLOUDFLARE_API_TOKEN` secret with Account → Cloudflare Pages → Edit for the account containing `fariszr-flatpak`. The Pages project uses direct upload and does not require a GitHub app installation.
 
 To reproduce publication with a local GPG key:
 

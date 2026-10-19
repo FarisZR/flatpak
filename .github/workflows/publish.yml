@@ -60,7 +60,13 @@ jobs:
           key=$(gpg --with-colons --list-secret-keys | awk -F: '$1=="fpr" {print $10; exit}')
           test "$(gpg --with-colons --show-keys fariszr.gpg | awk -F: '$1=="fpr" {print $10; exit}')" = "$key"
           python3 scripts/publish.py --site site --bundles bundles --key "$key" --version "$RELEASE_TAG"
-      - name: Publish atomic Pages deployment
+      - name: Deploy signed repository to Cloudflare Pages
+        if: steps.version.outputs.needed == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 0d2ca047624a68ccba5c1252afe799e9
+        run: npx --yes wrangler@4.151.2 pages deploy site --project-name fariszr-flatpak --branch pages
+      - name: Save published repository for subsequent releases
         if: steps.version.outputs.needed == 'true'
         env:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}

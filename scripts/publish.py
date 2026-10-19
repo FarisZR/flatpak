@@ -46,7 +46,7 @@ def publish(site, bundles, key, version):
             if refs != [ref]:
                 raise ValueError(f'Unexpected release refs: {refs}')
             run('ostree', f'--repo={repo}', 'pull-local', str(incoming), ref)
-        run('flatpak', 'build-sign', f'--gpg-sign={key}', str(repo), APP, 'stable', arch)
+        run('flatpak', 'build-sign', f'--gpg-sign={key}', f'--arch={arch}', str(repo), APP, 'stable')
     public = subprocess.check_output(['gpg', '--export', key])
     if not public:
         raise ValueError('Signing key has no public key')
