@@ -1,0 +1,78 @@
+name: Publish Flatpak repository
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: flatpak-production
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Read latest GSeek release
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=$(gh release view --repo FarisZR/GSeek --json tagName --jq .tagName)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          mkdir site
+          if git show-ref --verify --quiet refs/remotes/origin/pages; then
+            git archive origin/pages | tar -x -C site
+          fi
+          if test -f site/release.json && python3 -c 'import json,sys; sys.exit(json.load(open("site/release.json"))["gseek"] != sys.argv[1])' "$tag"; then
+            echo 'needed=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'needed=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install publication tools
+        if: steps.version.outputs.needed == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak ostree gnupg
+      - name: Download tested release bundles
+        if: steps.version.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release download "$RELEASE_TAG" --repo FarisZR/GSeek --dir bundles --pattern 'gseek-*.flatpak' --pattern SHA256SUMS
+          (cd bundles && sha256sum --check SHA256SUMS)
+      - name: Sign and prepare repository
+        if: steps.version.outputs.needed == 'true'
+        env:
+          FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          test -n "$FLATPAK_GPG_PRIVATE_KEY" || { echo 'Configure the FLATPAK_GPG_PRIVATE_KEY Actions secret.' >&2; exit 1; }
+          export GNUPGHOME="$RUNNER_TEMP/flatpak-gnupg"
+          install -dm700 "$GNUPGHOME"
+          printf '%s\n' "$FLATPAK_GPG_PRIVATE_KEY" | gpg --batch --import
+          key=$(gpg --with-colons --list-secret-keys | awk -F: '$1=="fpr" {print $10; exit}')
+          test "$(gpg --with-colons --show-keys fariszr.gpg | awk -F: '$1=="fpr" {print $10; exit}')" = "$key"
+          python3 scripts/publish.py --site site --bundles bundles --key "$key" --version "$RELEASE_TAG"
+      - name: Publish atomic Pages deployment
+        if: steps.version.outputs.needed == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd site
+          git init -b pages
+          git config user.name 'Faris ayo'
+          git config user.email '35614734+FarisZR@users.noreply.github.com'
+          git add .
+          git commit -m "Publish GSeek $RELEASE_TAG"
+          # Reuse checkout's scoped credential helper without exposing its token.
+          git -C .. config --get-regexp '^http\..*\.extraheader$' | while read -r key value; do git config "$key" "$value"; done
+          git remote add origin https://github.com/FarisZR/flatpak.git
+          git push --force origin pages
