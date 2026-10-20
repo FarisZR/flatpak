@@ -2,9 +2,12 @@
 """Import tested release bundles into the signed, bounded OSTree repository."""
 import argparse
 import base64
+import configparser
 import json
 from pathlib import Path
+import shutil
 import subprocess
+import tarfile
 import tempfile
 
 APP = 'com.fariszr.gseek'
@@ -30,6 +33,9 @@ def validate_site(site):
 
 
 def publish(site, bundles, key, version):
+    archive = bundles / 'gseek-repository-inputs.tar'
+    if archive.exists():
+        unpack_bundles(archive, bundles)
     site.mkdir(parents=True, exist_ok=True)
     repo = site / 'repo'
     if not repo.exists():
@@ -52,6 +58,13 @@ def publish(site, bundles, key, version):
         raise ValueError('Signing key has no public key')
     (site / 'fariszr.gpg').write_bytes(public)
     encoded = base64.b64encode(public).decode('ascii')
+    installer = bundles / 'gseek.flatpakref'
+    if installer.exists():
+        reference = configparser.ConfigParser(interpolation=None)
+        reference.read(installer)
+        expected = {'Name': APP, 'Branch': 'stable', 'Url': URL + '/repo', 'GPGKey': encoded}
+        if any(reference.get('Flatpak Ref', field, fallback=None) != value for field, value in expected.items()):
+            raise ValueError('Release installer does not match the signed repository identity and key')
     run('flatpak', 'build-update-repo', '--title=FarisZR Apps',
         '--homepage=' + URL, '--default-branch=stable', '--prune', '--prune-depth=3',
         f'--gpg-sign={key}', str(repo))
@@ -102,6 +115,21 @@ flatpak install --user fariszr com.fariszr.gseek</pre>
     stats = validate_site(site)
     (site / 'release.json').write_text(json.dumps({'gseek': version, 'architectures': list(ARCHES), **stats}, indent=2) + '\n')
     print(json.dumps(validate_site(site), indent=2))
+
+
+def unpack_bundles(archive, destination):
+    """Read only the two expected regular files, without extracting paths."""
+    expected = {f'gseek-{arch}.flatpak' for arch in ARCHES}
+    with tarfile.open(archive, 'r:') as inputs:
+        members = inputs.getmembers()
+        if len(members) != 2 or {member.name for member in members} != expected or not all(member.isfile() for member in members):
+            raise ValueError('Repository inputs must contain exactly the two architecture bundles')
+        for member in members:
+            target = destination / member.name
+            if target.is_symlink():
+                raise ValueError('Repository input destination must not be a symlink')
+            with inputs.extractfile(member) as source, target.open('wb') as output:
+                shutil.copyfileobj(source, output)
 
 
 if __name__ == '__main__':

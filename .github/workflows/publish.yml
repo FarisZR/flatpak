@@ -25,8 +25,8 @@ jobs:
           gh release view --repo FarisZR/GSeek --json tagName,assets > "$RUNNER_TEMP/gseek-release.json"
           tag=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["tagName"])' "$RUNNER_TEMP/gseek-release.json")
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          if ! python3 -c 'import json,sys; names={a["name"] for a in json.load(open(sys.argv[1]))["assets"]}; sys.exit(not {"gseek-x86_64.flatpak", "gseek-aarch64.flatpak", "SHA256SUMS"} <= names)' "$RUNNER_TEMP/gseek-release.json"; then
-            echo 'The latest release does not contain both Flatpak architectures yet.'
+          if ! python3 -c 'import json,sys; names={a["name"] for a in json.load(open(sys.argv[1]))["assets"]}; sys.exit(not {"gseek-repository-inputs.tar", "gseek.flatpakref", "SHA256SUMS"} <= names)' "$RUNNER_TEMP/gseek-release.json"; then
+            echo 'The latest release does not contain the Flatpak installer and repository inputs yet.'
             echo 'needed=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -50,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
-          gh release download "$RELEASE_TAG" --repo FarisZR/GSeek --dir bundles --pattern 'gseek-*.flatpak' --pattern SHA256SUMS
+          gh release download "$RELEASE_TAG" --repo FarisZR/GSeek --dir bundles --pattern gseek-repository-inputs.tar --pattern gseek.flatpakref --pattern SHA256SUMS
           (cd bundles && sha256sum --check SHA256SUMS)
       - name: Sign and prepare repository
         if: steps.version.outputs.needed == 'true'
