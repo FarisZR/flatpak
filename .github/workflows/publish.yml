@@ -73,7 +73,7 @@ jobs:
           test -n "$FLATPAK_GPG_PRIVATE_KEY" || { echo 'Configure the FLATPAK_GPG_PRIVATE_KEY Actions secret.' >&2; exit 1; }
           export GNUPGHOME="$RUNNER_TEMP/flatpak-gnupg"
           install -dm700 "$GNUPGHOME"
-          printf '%s\n' "$FLATPAK_GPG_PRIVATE_KEY" | gpg --batch --import
+          printf '%s\n' "$FLATPAK_GPG_PRIVATE_KEY" | python3 scripts/import-key.py
           key=$(gpg --with-colons --list-secret-keys | awk -F: '$1=="fpr" {print $10; exit}')
           test "$(gpg --with-colons --show-keys fariszr.gpg | awk -F: '$1=="fpr" {print $10; exit}')" = "$key"
           python3 scripts/publish.py --site site --bundles bundles --key "$key" --version "$RELEASE_TAG"

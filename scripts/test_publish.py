@@ -67,6 +67,16 @@ class SignedRepository(unittest.TestCase):
                 return result.stdout
             command('gpg', '--batch', '--pinentry-mode', 'loopback', '--passphrase', '', '--quick-generate-key', 'Repository CI <ci@example.invalid>', 'ed25519', 'sign', '0')
             key = next(line.split(':')[9] for line in command('gpg', '--with-colons', '--list-secret-keys').splitlines() if line.startswith('fpr:'))
+            # Exercise the same importer used by Actions, including a clipboard-lost
+            # blank line and CRLF endings, before signing with the imported key.
+            armor = command('gpg', '--armor', '--export-secret-keys', key)
+            imported_keyring = root / 'imported-gnupg'
+            imported_keyring.mkdir(mode=0o700)
+            env['GNUPGHOME'] = str(imported_keyring)
+            imported = subprocess.run([__import__('sys').executable, str(Path(__file__).with_name('import-key.py'))],
+                input=armor.replace('BLOCK-----\n\n', 'BLOCK-----\n').replace('\n', '\r\n'),
+                env=env, capture_output=True, text=True)
+            self.assertEqual(imported.returncode, 0, imported.stderr)
             bundles = root / 'bundles'
             bundles.mkdir()
             for arch in ARCHES:
