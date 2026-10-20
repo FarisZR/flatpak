@@ -96,7 +96,9 @@ class SignedRepository(unittest.TestCase):
             installer.write_text((site / 'gseek.flatpakref').read_text().replace(
                 'Url=https://flatpak.fariszr.com/repo', 'Url=' + (site / 'repo').as_uri()))
             command('flatpak', 'install', '--user', '--noninteractive', '--no-deps', '--no-related', '-y', str(installer))
-            self.assertEqual(command('flatpak', 'info', '--user', '--show-origin', APP).strip(), 'fariszr')
+            origin = command('flatpak', 'info', '--user', '--show-origin', APP).strip()
+            self.assertEqual(command('flatpak', 'info', '--user', '--show-commit', APP).strip(),
+                command('flatpak', 'remote-info', '--user', '--show-commit', origin, APP).strip())
             self.assertEqual(validate_site(site)['files'] > 0, True)
             self.assertIn('GPGKey=', (site / 'gseek.flatpakref').read_text())
             self.assertFalse((site / 'repo/deltas').exists() and any((site / 'repo/deltas').iterdir()))
