@@ -22,8 +22,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag=$(gh release view --repo FarisZR/GSeek --json tagName --jq .tagName)
+          gh release view --repo FarisZR/GSeek --json tagName,assets > "$RUNNER_TEMP/gseek-release.json"
+          tag=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["tagName"])' "$RUNNER_TEMP/gseek-release.json")
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if ! python3 -c 'import json,sys; names={a["name"] for a in json.load(open(sys.argv[1]))["assets"]}; sys.exit(not {"gseek-x86_64.flatpak", "gseek-aarch64.flatpak", "SHA256SUMS"} <= names)' "$RUNNER_TEMP/gseek-release.json"; then
+            echo 'The latest release does not contain both Flatpak architectures yet.'
+            echo 'needed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           mkdir site
           if git show-ref --verify --quiet refs/remotes/origin/pages; then
             git archive origin/pages | tar -x -C site
