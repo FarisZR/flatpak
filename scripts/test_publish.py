@@ -97,6 +97,23 @@ class SignedRepository(unittest.TestCase):
                         archive.add(bundle, arcname=bundle.name)
                         bundle.unlink()
                 publish(root / 'site', bundles, key, 'v0.0.0-test')
+                # A subsequent release starts from the exact git archive used
+                # by Actions, which has dropped OSTree's empty directories.
+                site = root / 'site'
+                command('git', '-C', str(site), 'init', '-b', 'pages')
+                command('git', '-C', str(site), 'add', '.')
+                command('git', '-C', str(site), '-c', 'user.name=Repository CI',
+                        '-c', 'user.email=ci@example.invalid', 'commit', '-m', 'Published repository')
+                snapshot = subprocess.check_output(['git', '-C', str(site), 'archive', 'HEAD'], env=env)
+                import io
+                restored = root / 'restored'
+                restored.mkdir()
+                with tarfile.open(fileobj=io.BytesIO(snapshot)) as archive:
+                    archive.extractall(restored, filter='data')
+                self.assertFalse((restored / 'repo/refs/remotes').exists())
+                publish(restored, bundles, key, 'v0.0.1-test')
+                __import__('shutil').rmtree(site)
+                restored.rename(site)
             site = root / 'site'
             command('flatpak', 'remote-add', '--user', '--gpg-import=' + str(site / 'fariszr.gpg'), 'signed-ci', str(site / 'repo'))
             for arch in ARCHES:

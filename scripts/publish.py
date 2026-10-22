@@ -40,6 +40,11 @@ def publish(site, bundles, key, version):
     repo = site / 'repo'
     if not repo.exists():
         run('ostree', f'--repo={repo}', 'init', '--mode=archive-z2')
+    # Git archives omit empty directories. OSTree expects its scaffold even
+    # when these directories have never contained a ref or transaction.
+    for directory in ('objects', 'tmp/cache', 'state', 'extensions',
+                      'refs/heads', 'refs/remotes', 'refs/mirrors'):
+        (repo / directory).mkdir(parents=True, exist_ok=True)
     for arch in ARCHES:
         bundle = bundles / f'gseek-{arch}.flatpak'
         # Importing through Flatpak validates bundle checksums and its app/ref.
