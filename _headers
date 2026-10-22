@@ -1,0 +1,12 @@
+/repo/objects/*
+  Cache-Control: public, max-age=31536000, immutable
+/repo/summary*
+  Cache-Control: no-cache
+/repo/config
+  Cache-Control: no-cache
+/*.flatpakref
+  Content-Type: application/vnd.flatpak.ref
+  Cache-Control: no-cache
+/*.flatpakrepo
+  Content-Type: application/vnd.flatpak.repo
+  Cache-Control: no-cache

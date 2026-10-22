@@ -1,0 +1,9 @@
+[Flatpak Ref]
+Name=com.fariszr.gseek
+Branch=stable
+Title=GSeek
+Url=https://flatpak.fariszr.com/repo
+SuggestRemoteName=fariszr
+IsRuntime=false
+RuntimeRepo=https://flathub.org/repo/flathub.flatpakrepo
+GPGKey=mDMEatZy6RYJKwYBBAHaRw8BAQdAsutvdXOHhTvNw687Md6NgEkv+w7KyL1DvX7l4BlvwUm0OEZhcmlzWlIgQXBwcyA8MzU2MTQ3MzQrRmFyaXNaUkB1c2Vycy5ub3JlcGx5LmdpdGh1Yi5jb20+iJAEExYKADgWIQRzjn5ACsIuTq0OaXSekW3IL465JwUCatZy6QIbAwULCQgHAgYVCgkICwIEFgIDAQIeAQIXgAAKCRCekW3IL465J1COAQCSzjGtfZED2nX5L8hMEuX71tV3/fdvPAz6s1MuSy/OvgD+O2gJKXsaS4FJ3oEx8L/s82bXuaLG5U61G2aCRJE9LwI=

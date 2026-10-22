@@ -1,0 +1,10 @@
+{
+  "gseek": "v0.2.2",
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "files": 146,
+  "bytes": 10045676,
+  "largest_asset_bytes": 3218407
+}
